@@ -1,9 +1,20 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+using ReactiveUI;
+using client.ViewModels;
 
 namespace client.ViewModels;
 
-public partial class MainViewModel : ViewModelBase
+public class MainViewModel : ViewModelBase
 {
-    [ObservableProperty]
-    public partial string Greeting { get; set; } = "Welcome to Avalonia!";
+    private ViewModelBase _currentViewModel;
+
+    public ViewModelBase CurrentViewModel
+    {
+        get => _currentViewModel;
+        set => SetField(ref _currentViewModel, value);
+    }
+
+    public MainViewModel()
+    {
+        CurrentViewModel = new LoginViewModel();
+    }
 }

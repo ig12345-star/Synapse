@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:client.ViewModels"
+             x:Class="client.Views.LoginView"
+             x:DataType="vm:LoginViewModel"
+             Background="#ffffff">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="10" Margin="24">
+            
+            <!-- App Name Header -->
+            <StackPanel Spacing="3" HorizontalAlignment="Center" Margin="0,5,0,5">
+                <TextBlock Text="SYNAPSE" 
+                           Foreground="#7c3aed" 
+                           FontSize="22" 
+                           FontWeight="ExtraBold" 
+                           HorizontalAlignment="Center" 
+                           LetterSpacing="3"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                    <Border Background="#fff7ed" CornerRadius="4" Padding="5,1.5">
+                        <TextBlock Text="RDP V4.2" 
+                                   Foreground="#f97316" 
+                                   FontSize="7.5" 
+                                   FontWeight="Bold"
+                                   LetterSpacing="1"/>
+                    </Border>
+                    <Border Background="#f3e8ff" CornerRadius="4" Padding="5,1.5">
+                        <TextBlock Text="PORTAL" 
+                                   Foreground="#7c3aed" 
+                                   FontSize="7.5" 
+                                   FontWeight="Bold"
+                                   LetterSpacing="1"/>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+
+            <Border Height="1" Background="#e2e8f0" Margin="0,0,0,2"/>
+
+            <!-- Username / Email Field -->
+            <StackPanel Spacing="3">
+                <TextBlock Text="USERNAME OR EMAIL" Foreground="#64748b" FontSize="8" FontWeight="Bold"/>
+                <TextBox Text="{Binding Username}" 
+                         Background="#f8fafc" 
+                         Foreground="#0f172a" 
+                         BorderBrush="#cbd5e1"
+                         CornerRadius="6"
+                         Height="36"/>
+            </StackPanel>
+
+            <!-- Password Field -->
+            <StackPanel Spacing="3">
+                <TextBlock Text="PASSWORD" Foreground="#64748b" FontSize="8" FontWeight="Bold"/>
+                <TextBox Text="{Binding Password}" 
+                         PasswordChar="•"
+                         Background="#f8fafc" 
+                         Foreground="#0f172a" 
+                         BorderBrush="#cbd5e1"
+                         CornerRadius="6"
+                         Height="36"/>
+            </StackPanel>
+
+            <!-- Confirm Password Field (Dynamic on Sign Up) -->
+            <StackPanel Spacing="3" IsVisible="{Binding IsSignUpMode}">
+                <TextBlock Text="CONFIRM PASSWORD" Foreground="#64748b" FontSize="8" FontWeight="Bold"/>
+                <TextBox Text="{Binding ConfirmPassword}" 
+                         PasswordChar="•"
+                         Background="#f8fafc" 
+                         Foreground="#0f172a" 
+                         BorderBrush="#cbd5e1"
+                         CornerRadius="6"
+                         Height="36"/>
+            </StackPanel>
+
+            <!-- Status Notification Box (Hidden when empty) -->
+            <Border Background="#fffbeb" 
+                    BorderBrush="#fde68a" 
+                    BorderThickness="1" 
+                    CornerRadius="6" 
+                    Padding="8,6"
+                    IsVisible="{Binding HasStatusMessage}">
+                <TextBlock Text="{Binding StatusMessage}" 
+                           Foreground="#b45309" 
+                           FontSize="10" 
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" 
+                           HorizontalAlignment="Center"/>
+            </Border>
+
+            <!-- Primary Action Button (Purple) -->
+            <Button Content="{Binding ActionbuttonText}" 
+                    Command="{Binding SubmitCommand}"
+                    Background="#7c3aed"
+                    Foreground="White"
+                    FontWeight="Bold"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    CornerRadius="6"
+                    Height="40"
+                    HorizontalAlignment="Stretch"
+                    Margin="0,4,0,0"/>
+
+            <!-- Mode Switcher Footer -->
+            <StackPanel Spacing="8" Margin="0,4,0,0">
+                <Border Height="1" Background="#e2e8f0"/>
+                
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
+                    <TextBlock Text="{Binding SwitchPromptText}" Foreground="#64748b" FontSize="11" VerticalAlignment="Center"/>
+                    <Button Content="{Binding ToggleModeText}" 
+                            Command="{Binding ToggleModeCommand}"
+                            Background="Transparent"
+                            Foreground="#f97316"
+                            FontWeight="Bold"
+                            FontSize="11"
+                            Padding="2"
+                            BorderThickness="0"
+                            VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
