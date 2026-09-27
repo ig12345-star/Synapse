@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Windows.Input;
 
 namespace client.ViewModels;
@@ -31,6 +33,8 @@ public class LoginViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
     private bool _isSignUpMode;
 
+    // Change this port if your server runs on a different port (check server output window)
+    private readonly string _serverBaseUrl = "http://localhost:5146";
     public string Username
     {
         get => _username;
@@ -88,7 +92,7 @@ public class LoginViewModel : ViewModelBase
         ToggleModeCommand = new RelayCommand(() => IsSignUpMode = !IsSignUpMode);
     }
 
-    private void ExecuteSubmit()
+    private async void ExecuteSubmit()
     {
         try
         {
@@ -98,6 +102,8 @@ public class LoginViewModel : ViewModelBase
                 return;
             }
 
+            using var httpClient = new HttpClient();
+
             if (IsSignUpMode)
             {
                 if (Password != ConfirmPassword)
@@ -106,16 +112,46 @@ public class LoginViewModel : ViewModelBase
                     return;
                 }
 
-                StatusMessage = $"Account successfully created for {Username}!";
+                StatusMessage = "Connecting to server...";
+
+                var response = await httpClient.PostAsJsonAsync($"{_serverBaseUrl}/api/auth/register", new
+                {
+                    Username = Username,
+                    Password = Password
+                });
+
+                if (response.IsSuccessStatusCode)
+                {
+                    StatusMessage = $"Account successfully created!";
+                }
+                else
+                {
+                    StatusMessage = "Registration failed. User may already exist.";
+                }
             }
             else
             {
-                StatusMessage = $"Authenticating session for {Username}...";
+                StatusMessage = "Authenticating...";
+
+                var response = await httpClient.PostAsJsonAsync($"{_serverBaseUrl}/api/auth/login", new
+                {
+                    Username = Username,
+                    Password = Password
+                });
+
+                if (response.IsSuccessStatusCode)
+                {
+                    StatusMessage = $"Login successful!";
+                }
+                else
+                {
+                    StatusMessage = "Invalid username or password.";
+                }
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            StatusMessage = $"Error: {ex.Message}";
+            StatusMessage = "Error: Could not connect to the server.";
         }
     }
 }
