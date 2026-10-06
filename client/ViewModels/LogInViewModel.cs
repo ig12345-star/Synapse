@@ -5,26 +5,6 @@ using System.Windows.Input;
 
 namespace client.ViewModels;
 
-public class RelayCommand : ICommand
-{
-    private readonly Action _execute;
-    private readonly Func<bool>? _canExecute;
-
-    public RelayCommand(Action execute, Func<bool>? canExecute = null)
-    {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-        _canExecute = canExecute;
-    }
-
-    public event EventHandler? CanExecuteChanged;
-
-    public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
-
-    public void Execute(object? parameter) => _execute();
-
-    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-}
-
 public class LoginViewModel : ViewModelBase
 {
     private string _username = string.Empty;
@@ -33,8 +13,11 @@ public class LoginViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
     private bool _isSignUpMode;
 
-    // Change this port if your server runs on a different port (check server output window)
     private readonly string _serverBaseUrl = "http://localhost:5146";
+
+    // Event to notify the window to switch to the dashboard
+    public event Action? OnLoginSuccess;
+
     public string Username
     {
         get => _username;
@@ -122,7 +105,8 @@ public class LoginViewModel : ViewModelBase
 
                 if (response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Account successfully created!";
+                    StatusMessage = "Account successfully created!";
+                    OnLoginSuccess?.Invoke(); // Triggers the dashboard transition
                 }
                 else
                 {
@@ -141,7 +125,8 @@ public class LoginViewModel : ViewModelBase
 
                 if (response.IsSuccessStatusCode)
                 {
-                    StatusMessage = $"Login successful!";
+                    StatusMessage = "Login successful!";
+                    OnLoginSuccess?.Invoke(); // Triggers the dashboard transition
                 }
                 else
                 {

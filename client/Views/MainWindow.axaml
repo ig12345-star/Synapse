@@ -1,22 +1,22 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:client.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:views="clr-namespace:client.Views"
-        mc:Ignorable="d" d:DesignWidth="360" d:DesignHeight="480"
-        Width="360" Height="480"
-        WindowStartupLocation="CenterScreen"
-        Background="#ffffff"
-        SystemDecorations="Full"
+        xmlns:views="using:client.Views"
         x:Class="client.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Title="Synapse">
+        Title="Synapse" 
+        Width="450" Height="550"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen">
 
-    <Design.DataContext>
-        <vm:MainViewModel/>
-    </Design.DataContext>
-
-    <ContentControl Content="{Binding CurrentViewModel}" />
-
+    <ContentControl Content="{Binding CurrentViewModel}">
+        <ContentControl.DataTemplates>
+            <DataTemplate DataType="{x:Type vm:LoginViewModel}">
+                <views:LoginView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+                <views:DashboardView />
+            </DataTemplate>
+        </ContentControl.DataTemplates>
+    </ContentControl>
 </Window>

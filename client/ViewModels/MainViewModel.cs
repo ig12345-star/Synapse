@@ -1,11 +1,12 @@
-using ReactiveUI;
-using client.ViewModels;
+using System;
 
 namespace client.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
     private ViewModelBase _currentViewModel;
+    
+    public event Action? RequestMaximizeWindow;
 
     public ViewModelBase CurrentViewModel
     {
@@ -15,6 +16,14 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
-        CurrentViewModel = new LoginViewModel();
+        var loginVM = new LoginViewModel();
+        
+        loginVM.OnLoginSuccess += () =>
+        {
+            CurrentViewModel = new DashboardViewModel();
+            RequestMaximizeWindow?.Invoke(); // Tell the window to go full screen now
+        };
+
+        _currentViewModel = loginVM;
     }
 }
