@@ -53,6 +53,7 @@
                 <TextBlock Text="PASSWORD" Foreground="#64748b" FontSize="8" FontWeight="Bold"/>
                 <TextBox Text="{Binding Password}" 
                          PasswordChar="•"
+                         Classes="revealPasswordButton"
                          Background="#f8fafc" 
                          Foreground="#0f172a" 
                          BorderBrush="#cbd5e1"
@@ -65,6 +66,7 @@
                 <TextBlock Text="CONFIRM PASSWORD" Foreground="#64748b" FontSize="8" FontWeight="Bold"/>
                 <TextBox Text="{Binding ConfirmPassword}" 
                          PasswordChar="•"
+                         Classes="revealPasswordButton"
                          Background="#f8fafc" 
                          Foreground="#0f172a" 
                          BorderBrush="#cbd5e1"
