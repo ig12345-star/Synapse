@@ -1,21 +1,24 @@
-﻿using System;
-using System.Net.Http;
-using System.Net.Http.Json;
+﻿
+using System;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Threading;
+using client.Services;
+using SharedModels; // מודל ההודעה המשותף
 
 namespace client.ViewModels;
 
 public class LoginViewModel : ViewModelBase
 {
+    private readonly TcpNetworkService _networkService = new();
     private string _username = string.Empty;
     private string _password = string.Empty;
     private string _confirmPassword = string.Empty;
     private string _statusMessage = string.Empty;
     private bool _isSignUpMode;
 
-    private readonly string _serverBaseUrl = "http://localhost:5146";
-
-    // Event to notify the window to switch to the dashboard
     public event Action? OnLoginSuccess;
 
     public string Username
@@ -71,72 +74,70 @@ public class LoginViewModel : ViewModelBase
 
     public LoginViewModel()
     {
-        SubmitCommand = new RelayCommand(ExecuteSubmit);
+        SubmitCommand = new RelayCommand(async () => await ExecuteSubmitAsync());
         ToggleModeCommand = new RelayCommand(() => IsSignUpMode = !IsSignUpMode);
+        
+        // הרשמה לקבלת תשובות מהשרת
+        _networkService.OnDataReceived += HandleServerResponse;
     }
 
-    private async void ExecuteSubmit()
+    private async Task ExecuteSubmitAsync()
     {
-        try
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
         {
-            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
-            {
-                StatusMessage = "Please fill in all required fields.";
-                return;
-            }
-
-            using var httpClient = new HttpClient();
-
-            if (IsSignUpMode)
-            {
-                if (Password != ConfirmPassword)
-                {
-                    StatusMessage = "Passwords do not match. Please re-enter.";
-                    return;
-                }
-
-                StatusMessage = "Connecting to server...";
-
-                var response = await httpClient.PostAsJsonAsync($"{_serverBaseUrl}/api/auth/register", new
-                {
-                    Username = Username,
-                    Password = Password
-                });
-
-                if (response.IsSuccessStatusCode)
-                {
-                    StatusMessage = "Account successfully created!";
-                    OnLoginSuccess?.Invoke(); // Triggers the dashboard transition
-                }
-                else
-                {
-                    StatusMessage = "Registration failed. User may already exist.";
-                }
-            }
-            else
-            {
-                StatusMessage = "Authenticating...";
-
-                var response = await httpClient.PostAsJsonAsync($"{_serverBaseUrl}/api/auth/login", new
-                {
-                    Username = Username,
-                    Password = Password
-                });
-
-                if (response.IsSuccessStatusCode)
-                {
-                    StatusMessage = "Login successful!";
-                    OnLoginSuccess?.Invoke(); // Triggers the dashboard transition
-                }
-                else
-                {
-                    StatusMessage = "Invalid username or password.";
-                }
-            }
+            StatusMessage = "Please fill in all required fields.";
+            return;
         }
-        catch (Exception)
+
+        if (IsSignUpMode && Password != ConfirmPassword)
+        {
+            StatusMessage = "Passwords do not match. Please re-enter.";
+            return;
+        }
+
+        StatusMessage = "Connecting to TCP Server...";
+
+        bool isConnected = await _networkService.ConnectAsync("127.0.0.1", 5000);
+        
+        if (!isConnected)
         {
             StatusMessage = "Error: Could not connect to the server.";
+            return;
+        }
+
+        StatusMessage = IsSignUpMode ? "Creating account..." : "Authenticating...";
+
+        // בניית הודעת ה-TCP
+        var message = new TcpMessage
+        {
+            Action = IsSignUpMode ? "Register" : "Login",
+            Username = Username,
+            Password = Password
+        };
+
+        string json = JsonSerializer.Serialize(message);
+        byte[] data = Encoding.UTF8.GetBytes(json);
+        await _networkService.SendAsync(data);
+    }
+
+    private void HandleServerResponse(byte[] data)
+    {
+        string jsonString = Encoding.UTF8.GetString(data);
+        var response = JsonSerializer.Deserialize<TcpMessage>(jsonString);
+
+        if (response != null && response.Action == "Response")
+        {
+            // עדכון הממשק חייב לקרות ב-UI Thread
+            Dispatcher.UIThread.Post(() =>
+            {
+                StatusMessage = response.MessageText;
+
+                if (response.Success)
+                {
+                    _networkService.Disconnect(); 
+                    OnLoginSuccess?.Invoke(); // מעבר למסך ה-Dashboard
+                }
+            });
         }
     }
 }
