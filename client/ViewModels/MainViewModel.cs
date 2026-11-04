@@ -1,27 +1,32 @@
 using System;
+using client.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace client.ViewModels;
 
-public class MainViewModel : ViewModelBase
+public partial class MainViewModel : ViewModelBase
 {
+    // יצירת המופע המשותף שיחזיק את חיבור ה-TCP פעיל לאורך כל חדר האפליקציה
+    private readonly TcpNetworkService _sharedNetworkService;
+    
+    [ObservableProperty]
     private ViewModelBase _currentViewModel;
     
     public event Action? RequestMaximizeWindow;
 
-    public ViewModelBase CurrentViewModel
-    {
-        get => _currentViewModel;
-        set => SetField(ref _currentViewModel, value);
-    }
-
     public MainViewModel()
     {
-        var loginVM = new LoginViewModel();
+        // אתחול שירות הרשת פעם אחת בלבד
+        _sharedNetworkService = new TcpNetworkService();
+
+        // העברת השירות המשותף למסך ההתחברות
+        var loginVM = new LoginViewModel(_sharedNetworkService);
         
         loginVM.OnLoginSuccess += () =>
         {
-            CurrentViewModel = new DashboardViewModel();
-            RequestMaximizeWindow?.Invoke(); // Tell the window to go full screen now
+            // העברת אותו השירות למסך ה-Dashboard
+            CurrentViewModel = new DashboardViewModel(_sharedNetworkService);
+            RequestMaximizeWindow?.Invoke();
         };
 
         _currentViewModel = loginVM;

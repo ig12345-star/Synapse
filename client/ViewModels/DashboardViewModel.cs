@@ -1,71 +1,44 @@
 ﻿using System;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Input;
 using Avalonia.Threading; 
 using client.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace client.ViewModels;
 
-public class DashboardViewModel : ViewModelBase
+public partial class DashboardViewModel : ViewModelBase
 {
-    private readonly TcpNetworkService _networkService = new();
+    private readonly TcpNetworkService _networkService;
     
+    [ObservableProperty]
     private string _localId = "842 109 443";
+    
+    [ObservableProperty]
     private string _targetId = string.Empty;
+    
+    [ObservableProperty]
     private string _accessKey = string.Empty;
+    
+    [ObservableProperty]
     private string _connectionStatus = "Ready to connect";
+    
+    [ObservableProperty]
     private bool _requestElevation = true;
+    
+    [ObservableProperty]
     private bool _clipboardSync = true;
 
-    public string LocalId
+    // קבלת שירות הרשת דרך הבנאי
+    public DashboardViewModel(TcpNetworkService networkService)
     {
-        get => _localId;
-        set => SetField(ref _localId, value);
-    }
-
-    public string TargetId
-    {
-        get => _targetId;
-        set => SetField(ref _targetId, value);
-    }
-
-    public string AccessKey
-    {
-        get => _accessKey;
-        set => SetField(ref _accessKey, value);
-    }
-
-    public string ConnectionStatus
-    {
-        get => _connectionStatus;
-        set => SetField(ref _connectionStatus, value);
-    }
-
-    public bool RequestElevation
-    {
-        get => _requestElevation;
-        set => SetField(ref _requestElevation, value);
-    }
-
-    public bool ClipboardSync
-    {
-        get => _clipboardSync;
-        set => SetField(ref _clipboardSync, value);
-    }
-
-    public ICommand ConnectCommand { get; }
-    public ICommand CopyIdCommand { get; }
-
-    public DashboardViewModel()
-    {
-        ConnectCommand = new RelayCommand(async () => await ExecuteConnectAsync());
-        CopyIdCommand = new RelayCommand(ExecuteCopyId);
-
+        _networkService = networkService;
         _networkService.OnDataReceived += HandleDataReceived;
     }
 
-    private async Task ExecuteConnectAsync()
+    [RelayCommand]
+    private async Task ConnectAsync()
     {
         if (string.IsNullOrWhiteSpace(TargetId))
         {
@@ -75,6 +48,8 @@ public class DashboardViewModel : ViewModelBase
 
         ConnectionStatus = "Connecting to server (Port 5000)...";
 
+        // בודק אם אנחנו כבר מחוברים (מהלוגין). אם לא, מנסה להתחבר.
+        // כדאי להוסיף מאפיין IsConnected ב-TcpNetworkService בהמשך, אבל בינתיים ננסה להתחבר
         bool isConnected = await _networkService.ConnectAsync("127.0.0.1", 5000);
 
         if (isConnected)
@@ -91,6 +66,12 @@ public class DashboardViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private void CopyId()
+    {
+        ConnectionStatus = "Local ID copied to clipboard!";
+    }
+
     private void HandleDataReceived(byte[] data)
     {
         string receivedMessage = Encoding.UTF8.GetString(data);
@@ -99,10 +80,5 @@ public class DashboardViewModel : ViewModelBase
         {
             ConnectionStatus = $"Msg from server: {receivedMessage}";
         });
-    }
-
-    private void ExecuteCopyId()
-    {
-        ConnectionStatus = "Local ID copied to clipboard!";
     }
 }
