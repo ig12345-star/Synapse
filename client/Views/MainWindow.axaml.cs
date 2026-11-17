@@ -11,19 +11,10 @@ public partial class MainWindow : Window
 
         var mainViewModel = new MainViewModel();
 
-        // Listen for the view model telling us login succeeded
         mainViewModel.RequestMaximizeWindow += () =>
         {
-            // Clear any starting bounds
-            Width = double.NaN;
-            Height = double.NaN;
-            MinWidth = 0;
-            MinHeight = 0;
-            MaxWidth = double.PositiveInfinity;
-            MaxHeight = double.PositiveInfinity;
-
-            // Force full screen / maximized state
-            WindowState = WindowState.Maximized;
+            // מגדיל את חלון הדאשבורד למסך מלא, תוך שמירה על כפתור ה-X למעלה
+            WindowState = WindowState.Maximized; 
         };
 
         DataContext = mainViewModel;

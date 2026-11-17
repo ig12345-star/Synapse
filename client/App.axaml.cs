@@ -17,10 +17,8 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainViewModel(),
-            };
+            // יצירת החלון בלבד. החלון עצמו כבר ייצור וינהל את ה-ViewModel שלו
+            desktop.MainWindow = new MainWindow();
         }
 
         base.OnFrameworkInitializationCompleted();
