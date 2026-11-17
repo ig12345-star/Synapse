@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Threading; 
 using client.Services;
+using SharedModels;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -30,7 +32,6 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _clipboardSync = true;
 
-    // קבלת שירות הרשת דרך הבנאי
     public DashboardViewModel(TcpNetworkService networkService)
     {
         _networkService = networkService;
@@ -46,23 +47,27 @@ public partial class DashboardViewModel : ViewModelBase
             return;
         }
 
-        ConnectionStatus = "Connecting to server (Port 5000)...";
+        ConnectionStatus = $"Contacting node {TargetId}...";
 
-        // בודק אם אנחנו כבר מחוברים (מהלוגין). אם לא, מנסה להתחבר.
-        // כדאי להוסיף מאפיין IsConnected ב-TcpNetworkService בהמשך, אבל בינתיים ננסה להתחבר
-        bool isConnected = await _networkService.ConnectAsync("127.0.0.1", 5000);
-
-        if (isConnected)
+        try
         {
-            ConnectionStatus = $"Connected via TCP to node {TargetId}!";
+            var message = new TcpMessage
+            {
+                Action = "RequestRemoteConnection",
+                Username = LocalId, 
+                MessageText = TargetId 
+            };
+
+            string json = JsonSerializer.Serialize(message);
+            byte[] data = Encoding.UTF8.GetBytes(json);
             
-            string testMessage = $"Hello from Client {LocalId} trying to reach {TargetId}!";
-            byte[] data = Encoding.UTF8.GetBytes(testMessage);
             await _networkService.SendAsync(data);
+            
+            ConnectionStatus = $"Connection request sent for {TargetId}!";
         }
-        else
+        catch (Exception)
         {
-            ConnectionStatus = "Connection failed. Is the server running?";
+            ConnectionStatus = "Network error. Connection to server lost.";
         }
     }
 

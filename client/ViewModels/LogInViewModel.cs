@@ -16,7 +16,7 @@ public partial class LoginViewModel : ViewModelBase
 
     public LoginViewModel(TcpNetworkService networkService)
     {
-        _networkService = networkService; // קבלת השירות המשותף מ-MainViewModel
+        _networkService = networkService;
         _networkService.OnDataReceived += HandleServerResponse;
     }
 
@@ -46,11 +46,6 @@ public partial class LoginViewModel : ViewModelBase
     public string ToggleModeText => IsSignUpMode ? "Log In" : "Create Account";
     public string SwitchPromptText => IsSignUpMode ? "Already have an account?" : "New to Synapse?";
 
-    public LoginViewModel()
-    {
-        _networkService.OnDataReceived += HandleServerResponse;
-    }
-
     [RelayCommand]
     private async Task SubmitAsync()
     {
@@ -67,6 +62,7 @@ public partial class LoginViewModel : ViewModelBase
         }
 
         StatusMessage = "Connecting to TCP Server...";
+        
         bool isConnected = await _networkService.ConnectAsync("127.0.0.1", 5000);
         
         if (!isConnected)
@@ -109,7 +105,9 @@ public partial class LoginViewModel : ViewModelBase
                 StatusMessage = response.MessageText;
                 if (response.Success)
                 {
-                    _networkService.Disconnect(); 
+                    // מניעת התנגשויות עתידיות - ניתוק ההאזנה רגע לפני שמעבירים את המושכות ל-Dashboard
+                    _networkService.OnDataReceived -= HandleServerResponse; 
+                    
                     OnLoginSuccess?.Invoke();
                 }
             });
