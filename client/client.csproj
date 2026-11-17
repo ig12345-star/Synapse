@@ -23,4 +23,12 @@
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2"/>
         <PackageReference Include="System.Net.Http.Json" Version="10.0.12" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Models\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\SharedModels\SharedModels.csproj" />
+    </ItemGroup>
 </Project>
