@@ -15,13 +15,10 @@ public partial class DashboardViewModel : ViewModelBase
     private readonly TcpNetworkService _networkService;
     
     [ObservableProperty]
-    private string _localId = "842 109 443";
+    private string _localId = string.Empty; 
     
     [ObservableProperty]
     private string _targetId = string.Empty;
-    
-    [ObservableProperty]
-    private string _accessKey = string.Empty;
     
     [ObservableProperty]
     private string _connectionStatus = "Ready to connect";
@@ -32,10 +29,32 @@ public partial class DashboardViewModel : ViewModelBase
     [ObservableProperty]
     private bool _clipboardSync = true;
 
+    [ObservableProperty]
+    private bool _isSettingsOpen = false;
+
     public DashboardViewModel(TcpNetworkService networkService)
     {
         _networkService = networkService;
         _networkService.OnDataReceived += HandleDataReceived;
+    }
+
+    public void InitializeSession()
+    {
+        LocalId = _networkService.LocalSessionId;
+        // מאפס את ההודעה למטה בכל פעם שנכנסים
+        ConnectionStatus = "Ready to connect";
+    }
+
+    [RelayCommand]
+    private void ShowHome()
+    {
+        IsSettingsOpen = false;
+    }
+
+    [RelayCommand]
+    private void ShowSettings()
+    {
+        IsSettingsOpen = true;
     }
 
     [RelayCommand]
@@ -62,8 +81,6 @@ public partial class DashboardViewModel : ViewModelBase
             byte[] data = Encoding.UTF8.GetBytes(json);
             
             await _networkService.SendAsync(data);
-            
-            ConnectionStatus = $"Connection request sent for {TargetId}!";
         }
         catch (Exception)
         {
@@ -79,11 +96,40 @@ public partial class DashboardViewModel : ViewModelBase
 
     private void HandleDataReceived(byte[] data)
     {
-        string receivedMessage = Encoding.UTF8.GetString(data);
+        string jsonString = Encoding.UTF8.GetString(data);
         
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            ConnectionStatus = $"Msg from server: {receivedMessage}";
-        });
+            var message = JsonSerializer.Deserialize<TcpMessage>(jsonString);
+            
+            if (message != null)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (message.Action == "IncomingConnection")
+                    {
+                        ConnectionStatus = $"📞 {message.MessageText}";
+                    }
+                    else if (message.Action == "Response")
+                    {
+                        // כאן התיקון: אנחנו מסננים החוצה את ההודעה שמכילה את המספר שלנו!
+                        if (message.MessageText == LocalId || message.MessageText == _networkService.LocalSessionId)
+                        {
+                            ConnectionStatus = "Ready to connect";
+                            return;
+                        }
+                        
+                        ConnectionStatus = message.Success ? $"✅ {message.MessageText}" : $"❌ {message.MessageText}";
+                    }
+                });
+            }
+        }
+        catch
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                ConnectionStatus = $"Raw data: {jsonString}";
+            });
+        }
     }
 }

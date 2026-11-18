@@ -1,67 +1,71 @@
 ﻿using System;
 using System.Net.Sockets;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace client.Services;
 
 public class TcpNetworkService
 {
-    private TcpClient? _tcpClient;
+    private TcpClient? _client;
     private NetworkStream? _stream;
-    private CancellationTokenSource? _cancellationTokenSource;
 
-    // אירוע שמופעל כשהשרת שולח לנו נתונים
+    // המשתנה החדש ששומר את הקוד הייחודי שהשרת נתן לנו (לדוגמה: "123 456 789")
+    public string LocalSessionId { get; set; } = string.Empty;
+
     public event Action<byte[]>? OnDataReceived;
 
-    public async Task<bool> ConnectAsync(string ipAddress, int port)
+    public async Task ConnectAsync(string ipAddress, int port)
     {
-        try
-        {
-            _tcpClient = new TcpClient();
-            await _tcpClient.ConnectAsync(ipAddress, port);
-            _stream = _tcpClient.GetStream();
-            
-            _cancellationTokenSource = new CancellationTokenSource();
-            _ = StartListeningAsync(_cancellationTokenSource.Token);
-            
-            return true;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
+        if (_client != null && _client.Connected)
+            return;
+
+        _client = new TcpClient();
+        await _client.ConnectAsync(ipAddress, port);
+        _stream = _client.GetStream();
+
+        // מתחיל את לולאת ההאזנה להודעות מהשרת ברקע
+        _ = Task.Run(ReceiveLoopAsync);
     }
 
     public async Task SendAsync(byte[] data)
     {
-        if (_stream != null && _stream.CanWrite)
+        if (_stream != null && _client != null && _client.Connected)
         {
             await _stream.WriteAsync(data, 0, data.Length);
-            await _stream.FlushAsync();
+        }
+        else
+        {
+            throw new InvalidOperationException("Not connected to the server.");
         }
     }
 
-    private async Task StartListeningAsync(CancellationToken token)
+    private async Task ReceiveLoopAsync()
     {
         if (_stream == null) return;
-        byte[] buffer = new byte[8192]; 
+
+        byte[] buffer = new byte[8192];
 
         try
         {
-            while (!token.IsCancellationRequested)
+            while (true)
             {
-                int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length, token);
-                if (bytesRead == 0) break; 
+                int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
+                if (bytesRead == 0)
+                {
+                    // השרת ניתק את החיבור
+                    break;
+                }
 
                 byte[] receivedData = new byte[bytesRead];
                 Array.Copy(buffer, receivedData, bytesRead);
+
+                // מעביר את המידע ל-ViewModels שנרשמו לאירוע
                 OnDataReceived?.Invoke(receivedData);
             }
         }
         catch (Exception)
         {
-            // שגיאת רשת או התנתקות
+            // טיפול בשגיאת רשת (למשל סגירת תוכנה פתאומית)
         }
         finally
         {
@@ -71,8 +75,7 @@ public class TcpNetworkService
 
     public void Disconnect()
     {
-        _cancellationTokenSource?.Cancel();
         _stream?.Close();
-        _tcpClient?.Close();
+        _client?.Close();
     }
 }

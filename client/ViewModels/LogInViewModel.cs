@@ -13,12 +13,7 @@ namespace client.ViewModels;
 public partial class LoginViewModel : ViewModelBase
 {
     private readonly TcpNetworkService _networkService;
-
-    public LoginViewModel(TcpNetworkService networkService)
-    {
-        _networkService = networkService;
-        _networkService.OnDataReceived += HandleServerResponse;
-    }
+    public Action? LoginSuccess;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -34,55 +29,20 @@ public partial class LoginViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ActionbuttonText))]
-    [NotifyPropertyChangedFor(nameof(ToggleModeText))]
+    [NotifyPropertyChangedFor(nameof(ActionButtonText))]
     [NotifyPropertyChangedFor(nameof(SwitchPromptText))]
-    private bool _isSignUpMode;
+    [NotifyPropertyChangedFor(nameof(ToggleModeText))]
+    private bool _isSignUpMode = false;
 
-    public event Action? OnLoginSuccess;
+    public bool HasStatusMessage => !string.IsNullOrEmpty(StatusMessage);
+    public string ActionButtonText => IsSignUpMode ? "CREATE ACCOUNT" : "SIGN IN";
+    public string SwitchPromptText => IsSignUpMode ? "ALREADY HAVE AN ACCOUNT?" : "DON'T HAVE AN ACCOUNT?";
+    public string ToggleModeText => IsSignUpMode ? "SIGN IN" : "SIGN UP";
 
-    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
-    public string ActionbuttonText => IsSignUpMode ? "CREATE ACCOUNT" : "LOG IN";
-    public string ToggleModeText => IsSignUpMode ? "Log In" : "Create Account";
-    public string SwitchPromptText => IsSignUpMode ? "Already have an account?" : "New to Synapse?";
-
-    [RelayCommand]
-    private async Task SubmitAsync()
+    public LoginViewModel(TcpNetworkService networkService)
     {
-        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
-        {
-            StatusMessage = "Please fill in all required fields.";
-            return;
-        }
-
-        if (IsSignUpMode && Password != ConfirmPassword)
-        {
-            StatusMessage = "Passwords do not match. Please re-enter.";
-            return;
-        }
-
-        StatusMessage = "Connecting to TCP Server...";
-        
-        bool isConnected = await _networkService.ConnectAsync("127.0.0.1", 5000);
-        
-        if (!isConnected)
-        {
-            StatusMessage = "Error: Could not connect to the server.";
-            return;
-        }
-
-        StatusMessage = IsSignUpMode ? "Creating account..." : "Authenticating...";
-
-        var message = new TcpMessage
-        {
-            Action = IsSignUpMode ? "Register" : "Login",
-            Username = Username,
-            Password = Password
-        };
-
-        string json = JsonSerializer.Serialize(message);
-        byte[] data = Encoding.UTF8.GetBytes(json);
-        await _networkService.SendAsync(data);
+        _networkService = networkService;
+        _networkService.OnDataReceived += HandleDataReceived;
     }
 
     [RelayCommand]
@@ -90,27 +50,82 @@ public partial class LoginViewModel : ViewModelBase
     {
         IsSignUpMode = !IsSignUpMode;
         StatusMessage = string.Empty;
-        ConfirmPassword = string.Empty;
     }
 
-    private void HandleServerResponse(byte[] data)
+    [RelayCommand]
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+        {
+            StatusMessage = "Please enter username and password.";
+            return;
+        }
+
+        if (IsSignUpMode)
+        {
+            if (Password != ConfirmPassword)
+            {
+                StatusMessage = "Passwords do not match.";
+                return;
+            }
+            StatusMessage = "Registering...";
+        }
+        else
+        {
+            StatusMessage = "Connecting...";
+        }
+
+        try
+        {
+            await _networkService.ConnectAsync("127.0.0.1", 5000);
+            
+            var action = IsSignUpMode ? "Register" : "Login";
+            var message = new TcpMessage { Action = action, Username = Username, Password = Password };
+            
+            string json = JsonSerializer.Serialize(message);
+            await _networkService.SendAsync(Encoding.UTF8.GetBytes(json));
+        }
+        catch
+        {
+            StatusMessage = "Connection failed. Is the server running?";
+        }
+    }
+
+    private void HandleDataReceived(byte[] data)
     {
         string jsonString = Encoding.UTF8.GetString(data);
-        var response = JsonSerializer.Deserialize<TcpMessage>(jsonString);
-
-        if (response != null && response.Action == "Response")
+        
+        try
         {
-            Dispatcher.UIThread.Post(() =>
+            var response = JsonSerializer.Deserialize<TcpMessage>(jsonString);
+            if (response != null && response.Action == "Response")
             {
-                StatusMessage = response.MessageText;
-                if (response.Success)
+                Dispatcher.UIThread.Post(() =>
                 {
-                    // מניעת התנגשויות עתידיות - ניתוק ההאזנה רגע לפני שמעבירים את המושכות ל-Dashboard
-                    _networkService.OnDataReceived -= HandleServerResponse; 
-                    
-                    OnLoginSuccess?.Invoke();
-                }
-            });
+                    if (response.Success)
+                    {
+                        if (!IsSignUpMode)
+                        {
+                            _networkService.LocalSessionId = response.MessageText;
+                            _networkService.OnDataReceived -= HandleDataReceived;
+                            LoginSuccess?.Invoke();
+                        }
+                        else
+                        {
+                            StatusMessage = response.MessageText; 
+                            ToggleMode(); 
+                        }
+                    }
+                    else
+                    {
+                        StatusMessage = response.MessageText;
+                    }
+                });
+            }
+        }
+        catch
+        {
+            Dispatcher.UIThread.Post(() => StatusMessage = "Error communicating with server.");
         }
     }
 }
